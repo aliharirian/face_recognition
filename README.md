@@ -10,8 +10,8 @@ This Python project is a simple university assignment that utilizes the face_rec
 ### Installation
 1. Clone the repository:
    ```bash
-   git clone https://github.com/aliharirian/face-recognition-project.git
-   cd face-recognition-project
+   git clone https://github.com/aliharirian/face_recognition.git
+   cd face_recognition
    ```
 
 2. Configure the face image:
