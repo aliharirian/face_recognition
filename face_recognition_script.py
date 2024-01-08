@@ -1,24 +1,54 @@
 import face_recognition
 import cv2
 import numpy as np
+import pymongo
+from dotenv import load_dotenv
+import os
 
+# Load environment variables from .env file
+load_dotenv()
 
-# Get a reference to webcam #0 (the default one)
+# Load MongoDB configuration from environment variables
+username = os.getenv('MONGO_USERNAME', '')
+password = os.getenv('MONGO_PASSWORD', '')
+hostname = os.getenv('MONGO_HOSTNAME', 'localhost')
+port = int(os.getenv('MONGO_PORT', 27017))
+database_env = os.getenv('MONGO_DATABASE', 'face_recognition')
+collection_env = os.getenv('MONGO_COLLECTION', 'faces')
+
+# Connect to MongoDB
+if username and password:
+    uri = f"mongodb://{username}:{password}@{hostname}:{port}/{database_env}"
+else:
+    uri = f"mongodb://{hostname}:{port}/{database_env}"
+client = pymongo.MongoClient(uri)
+database = client[database_env]
+collection = database[collection_env]
+
+# Fetch known face encodings and names from MongoDB
+known_face_encodings = []
+known_face_names = []
+
+for known_face_data in collection.find():
+    name = known_face_data['name']
+    image_binary = known_face_data['image_binary']
+
+    # Decode binary data to numpy array
+    image_array = np.frombuffer(image_binary, dtype=np.uint8)
+
+    # Decode the image array
+    face_img = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+
+    # Find face encodings
+    face_encoding = face_recognition.face_encodings(face_img)[0]
+
+    known_face_encodings.append(face_encoding)
+    known_face_names.append(name)
+
+# Initialize video capture
 video_capture = cv2.VideoCapture(0)
 
-# Load a sample picture and learn how to recognize it.
-face_img = face_recognition.load_image_file("face_image.jpg")
-face_img_encoding = face_recognition.face_encodings(face_img)[0]
-
-# Create arrays of known face encodings and their names
-known_face_encodings = [
-    face_img_encoding
-]
-known_face_names = [
-    'Haririan'
-]
-
-# Initialize some variables
+# Initialize variables
 face_locations = []
 face_encodings = []
 face_names = []
@@ -45,11 +75,6 @@ while True:
             # See if the face is a match for the known face(s)
             matches = face_recognition.compare_faces(known_face_encodings, face_encoding)
             name = "Unknown"
-
-            # # If a match was found in known_face_encodings, just use the first one.
-            # if True in matches:
-            #     first_match_index = matches.index(True)
-            #     name = known_face_names[first_match_index]
 
             # Or instead, use the known face with the smallest distance to the new face
             face_distances = face_recognition.face_distance(known_face_encodings, face_encoding)
@@ -78,7 +103,7 @@ while True:
         cv2.putText(frame, name, (left + 6, bottom - 6), font, 1.0, (255, 255, 255), 1)
 
     # Display the resulting image
-    cv2.imshow('Ali Haririan Project', frame)
+    cv2.imshow('Face Recognition', frame)
 
     # Hit 'q' on the keyboard to quit!
     if cv2.waitKey(1) & 0xFF == ord('q'):
